@@ -47,9 +47,12 @@ class Hmac(object):
         if app:
             self.init_app(app)
 
+    def extract_signature_from_header(self):
+        return request.headers[self.header]
+
     def get_signature(self, request):
         try:
-            return six.b(request.headers[self.header])
+            return six.b(self.extract_signature_from_header())
         except KeyError:
             raise SecretKeyIsNotSet()
 
@@ -126,6 +129,13 @@ class Hmac(object):
         except (TypeError, binascii.Error):
             raise InvalidSignature()
 
+    def get_hmac_data(self, request):
+        ''' Gets Message component for HMAC. Override for custom data component from request.
+        Arguments:
+            request (Request): flask request object
+        '''
+        return request.data
+
     def validate_signature(self, request, only=None):
         '''Validates a requests HMAC Signature against one generated server side
         from the same client secret key.
@@ -144,7 +154,7 @@ class Hmac(object):
         hmac_server_tokens = []
 
         if self.hmac_key is not None:
-            token = self.make_hmac(request.data)
+            token = self.make_hmac(self.get_hmac_data(request))
             hmac_server_tokens.append(token)
 
         if self.hmac_keys is not None:
@@ -152,10 +162,10 @@ class Hmac(object):
                 client, sig = self._parse_multiple_signature(signature)
                 if only is not None:
                     if client in only:
-                        token = self.make_hmac_for(client, request.data)
+                        token = self.make_hmac_for(client, self.get_hmac_data(request))
                         hmac_server_tokens.append(token)
                 else:
-                    token = self.make_hmac_for(client, request.data)
+                    token = self.make_hmac_for(client, self.get_hmac_data(request))
                     hmac_server_tokens.append(token)
             except ValueError:
                 # We fall here if the signature does is not vlaid on it's own
