@@ -47,9 +47,12 @@ class Hmac(object):
         if app:
             self.init_app(app)
 
+    def extract_signature_from_header(self):
+        return request.headers[self.header]
+
     def get_signature(self, request):
         try:
-            return six.b(request.headers[self.header])
+            return six.b(self.extract_signature_from_header())
         except KeyError:
             raise SecretKeyIsNotSet()
 
